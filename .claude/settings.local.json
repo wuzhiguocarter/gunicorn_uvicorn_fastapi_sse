@@ -1,0 +1,6 @@
+{
+  "enabledMcpjsonServers": [
+    "streamable-mcp-server"
+  ],
+  "enableAllProjectMcpServers": true
+}
