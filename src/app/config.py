@@ -2,8 +2,6 @@
 Configuration settings for the ChatBot SSE Server
 """
 
-import os
-from typing import Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -36,11 +34,13 @@ class Settings(BaseSettings):
     log_format: str = Field(default="json", env="LOG_FORMAT")
 
     # Performance
-    max_concurrent_connections: int = Field(default=1000, env="MAX_CONCURRENT_CONNECTIONS")
+    max_concurrent_connections: int = Field(
+        default=1000, env="MAX_CONCURRENT_CONNECTIONS"
+    )
     request_timeout: int = Field(default=30, env="REQUEST_TIMEOUT")
 
     # Security
-    api_key: Optional[str] = Field(default=None, env="API_KEY")
+    api_key: str | None = Field(default=None, env="API_KEY")
     cors_origins: list[str] = Field(default=["*"], env="CORS_ORIGINS")
 
 

@@ -5,30 +5,27 @@ Load testing client for the ChatBot SSE Server
 import asyncio
 import json
 import time
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import aiohttp
-import httpx
 from tqdm import tqdm
-
-from ..app.models import ChatRequest
 
 
 @dataclass
 class TestMetrics:
     """Test metrics collector"""
+
     total_requests: int = 0
     successful_requests: int = 0
     failed_requests: int = 0
     total_response_time: float = 0.0
-    min_response_time: float = float('inf')
+    min_response_time: float = float("inf")
     max_response_time: float = 0.0
-    response_times: List[float] = field(default_factory=list)
-    errors: List[Dict[str, Any]] = field(default_factory=list)
-    start_time: Optional[float] = None
-    end_time: Optional[float] = None
+    response_times: list[float] = field(default_factory=list)
+    errors: list[dict[str, Any]] = field(default_factory=list)
+    start_time: float | None = None
+    end_time: float | None = None
 
     @property
     def average_response_time(self) -> float:
@@ -59,17 +56,19 @@ class TestMetrics:
         self.min_response_time = min(self.min_response_time, response_time)
         self.max_response_time = max(self.max_response_time, response_time)
 
-    def add_error(self, error: Exception, request_data: Optional[Dict] = None):
+    def add_error(self, error: Exception, request_data: dict | None = None):
         """Add error to metrics"""
         self.failed_requests += 1
-        self.errors.append({
-            "error": str(error),
-            "type": type(error).__name__,
-            "request_data": request_data,
-            "timestamp": time.time(),
-        })
+        self.errors.append(
+            {
+                "error": str(error),
+                "type": type(error).__name__,
+                "request_data": request_data,
+                "timestamp": time.time(),
+            }
+        )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert metrics to dictionary"""
         return {
             "total_requests": self.total_requests,
@@ -77,10 +76,14 @@ class TestMetrics:
             "failed_requests": self.failed_requests,
             "success_rate": self.success_rate,
             "average_response_time": self.average_response_time,
-            "min_response_time": self.min_response_time if self.min_response_time != float('inf') else 0,
+            "min_response_time": self.min_response_time
+            if self.min_response_time != float("inf")
+            else 0,
             "max_response_time": self.max_response_time,
             "throughput": self.throughput,
-            "total_duration": (self.end_time - self.start_time) if self.start_time and self.end_time else 0,
+            "total_duration": (self.end_time - self.start_time)
+            if self.start_time and self.end_time
+            else 0,
             "errors": self.errors,
         }
 
@@ -89,7 +92,7 @@ class ChatBotLoadTester:
     """Load testing client for ChatBot SSE Server"""
 
     def __init__(self, base_url: str = "http://localhost:8000"):
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.session = None
         self.metrics = TestMetrics()
 
@@ -103,7 +106,9 @@ class ChatBotLoadTester:
         if self.session:
             await self.session.close()
 
-    async def send_single_request(self, message: str, conversation_id: Optional[str] = None) -> Dict[str, Any]:
+    async def send_single_request(
+        self, message: str, conversation_id: str | None = None
+    ) -> dict[str, Any]:
         """Send a single chat request"""
         if not self.session:
             raise RuntimeError("Session not initialized. Use async with statement.")
@@ -114,12 +119,14 @@ class ChatBotLoadTester:
         try:
             # Prepare form data
             data = aiohttp.FormData()
-            data.add_field('message', message)
+            data.add_field("message", message)
             if conversation_id:
-                data.add_field('conversation_id', conversation_id)
+                data.add_field("conversation_id", conversation_id)
 
             # Send request
-            async with self.session.post(f"{self.base_url}/chat", data=data) as response:
+            async with self.session.post(
+                f"{self.base_url}/chat", data=data
+            ) as response:
                 if response.status != 200:
                     raise Exception(f"HTTP {response.status}: {await response.text()}")
 
@@ -131,32 +138,32 @@ class ChatBotLoadTester:
 
                 async for line in response.content:
                     if line:
-                        line_str = line.decode('utf-8').strip()
-                        if line_str.startswith('data: '):
+                        line_str = line.decode("utf-8").strip()
+                        if line_str.startswith("data: "):
                             try:
                                 # 解析 data: event='message' data='{"type": "complete", ...}' 格式
                                 data_part = line_str[6:]  # 去掉 "data: "
 
                                 # 查找 JSON 部分
-                                json_start = data_part.find('data=\'')
+                                json_start = data_part.find("data='")
                                 if json_start != -1:
                                     json_start += 6  # 跳过 'data=\''
-                                    json_end = data_part.find('\'', json_start)
+                                    json_end = data_part.find("'", json_start)
                                     if json_end != -1:
                                         json_str = data_part[json_start:json_end]
                                         data = json.loads(json_str)
                                         event_count += 1
 
-                                        if data.get('type') == 'complete':
-                                            last_message = data.get('content', '')
+                                        if data.get("type") == "complete":
+                                            last_message = data.get("content", "")
                                             received_complete_event = True
-                                        elif data.get('type') == 'completed':
+                                        elif data.get("type") == "completed":
                                             # 处理最终的 completed 事件
-                                            last_message = data.get('content', '')
+                                            last_message = data.get("content", "")
                                             received_complete_event = True
 
-                                        full_response += data.get('content', '')
-                            except (json.JSONDecodeError, ValueError) as e:
+                                        full_response += data.get("content", "")
+                            except (json.JSONDecodeError, ValueError):
                                 # 解析失败时跳过这行
                                 pass
 
@@ -166,7 +173,10 @@ class ChatBotLoadTester:
                 if event_count == 0 or not last_message:
                     # 没有收到SSE事件或没有收到complete事件，标记为失败
                     error_msg = f"Incomplete SSE response: {event_count} events, no complete event"
-                    self.metrics.add_error(Exception(error_msg), {"message": message, "conversation_id": conversation_id})
+                    self.metrics.add_error(
+                        Exception(error_msg),
+                        {"message": message, "conversation_id": conversation_id},
+                    )
                     return {
                         "success": False,
                         "response_time": response_time,
@@ -191,7 +201,9 @@ class ChatBotLoadTester:
 
         except Exception as e:
             response_time = time.time() - start_time
-            self.metrics.add_error(e, {"message": message, "conversation_id": conversation_id})
+            self.metrics.add_error(
+                e, {"message": message, "conversation_id": conversation_id}
+            )
             return {
                 "success": False,
                 "response_time": response_time,
@@ -203,9 +215,9 @@ class ChatBotLoadTester:
         self,
         num_requests: int,
         concurrency: int,
-        messages: Optional[List[str]] = None,
+        messages: list[str] | None = None,
         multi_turn: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run concurrent load test"""
         self.metrics.start_time = time.time()
 
@@ -224,7 +236,7 @@ class ChatBotLoadTester:
             ]
 
         semaphore = asyncio.Semaphore(concurrency)
-        conversation_ids: Dict[int, str] = {}
+        conversation_ids: dict[int, str] = {}
 
         async def send_request(request_id: int):
             async with semaphore:
@@ -237,7 +249,9 @@ class ChatBotLoadTester:
                     # Extract conversation_id from response if available
                     if result.get("conversation_id") is None and multi_turn:
                         # For multi-turn, we need to track conversation IDs
-                        conversation_ids[request_id] = str(request_id)  # Use request_id as conversation_id for now
+                        conversation_ids[request_id] = str(
+                            request_id
+                        )  # Use request_id as conversation_id for now
                 elif multi_turn:
                     conversation_ids[request_id] = None
 
@@ -263,8 +277,8 @@ class ChatBotLoadTester:
         max_concurrency: int,
         ramp_up_duration: int,
         duration: int,
-        messages: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        messages: list[str] | None = None,
+    ) -> dict[str, Any]:
         """Run ramp-up load test"""
         self.metrics.start_time = time.time()
 
@@ -314,7 +328,7 @@ class ChatBotLoadTester:
         except Exception:
             return False
 
-    async def get_metrics(self) -> Dict[str, Any]:
+    async def get_metrics(self) -> dict[str, Any]:
         """Get server metrics"""
         try:
             async with self.session.get(f"{self.base_url}/metrics") as response:
@@ -333,9 +347,13 @@ async def main():
     parser.add_argument("--url", default="http://localhost:8000", help="Server URL")
     parser.add_argument("--requests", type=int, default=100, help="Number of requests")
     parser.add_argument("--concurrency", type=int, default=10, help="Concurrency level")
-    parser.add_argument("--multi-turn", action="store_true", help="Enable multi-turn conversation")
+    parser.add_argument(
+        "--multi-turn", action="store_true", help="Enable multi-turn conversation"
+    )
     parser.add_argument("--ramp-up", type=int, help="Ramp-up duration in seconds")
-    parser.add_argument("--duration", type=int, default=60, help="Test duration in seconds")
+    parser.add_argument(
+        "--duration", type=int, default=60, help="Test duration in seconds"
+    )
     parser.add_argument("--output", help="Output file for results")
 
     args = parser.parse_args()
@@ -381,14 +399,14 @@ async def main():
         print(f"Throughput: {metrics['throughput']:.2f} requests/second")
         print(f"Total Duration: {metrics['total_duration']:.2f}s")
 
-        if metrics['errors']:
+        if metrics["errors"]:
             print(f"\nErrors ({len(metrics['errors'])}):")
-            for error in metrics['errors'][:5]:  # Show first 5 errors
+            for error in metrics["errors"][:5]:  # Show first 5 errors
                 print(f"  - {error['type']}: {error['error']}")
 
         # Save results to file
         if args.output:
-            with open(args.output, 'w') as f:
+            with open(args.output, "w") as f:
                 json.dump(results, f, indent=2)
             print(f"\nResults saved to {args.output}")
 

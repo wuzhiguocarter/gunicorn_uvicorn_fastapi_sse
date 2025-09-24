@@ -1,5 +1,6 @@
-import os
 import math
+import os
+
 
 def get_cgroup_cpu_count():
     try:
@@ -25,6 +26,7 @@ def get_cgroup_cpu_count():
         pass
 
     return os.cpu_count()
+
 
 if __name__ == "__main__":
     print("Container visible CPUs:", get_cgroup_cpu_count())

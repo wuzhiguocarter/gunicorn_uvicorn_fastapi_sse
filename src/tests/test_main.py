@@ -2,10 +2,10 @@
 Test cases for the main FastAPI application
 """
 
-import json
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.app.main import app
 
@@ -52,7 +52,7 @@ class TestMainApp:
 
     def test_chat_endpoint_success(self, client):
         """Test successful chat endpoint"""
-        with patch('src.app.main.chatbot') as mock_chatbot:
+        with patch("src.app.main.chatbot") as mock_chatbot:
             # Mock chatbot stream
             async def mock_stream():
                 yield MagicMock(event="connected", data='{"conversation_id": "test"}')
@@ -64,7 +64,7 @@ class TestMainApp:
             response = client.post(
                 "/chat",
                 data={"message": "Hello"},
-                headers={"content-type": "application/x-www-form-urlencoded"}
+                headers={"content-type": "application/x-www-form-urlencoded"},
             )
 
             assert response.status_code == 200
@@ -75,7 +75,7 @@ class TestMainApp:
         response = client.post(
             "/chat",
             data={},
-            headers={"content-type": "application/x-www-form-urlencoded"}
+            headers={"content-type": "application/x-www-form-urlencoded"},
         )
 
         assert response.status_code == 422
@@ -85,7 +85,7 @@ class TestMainApp:
         response = client.post(
             "/chat",
             data={"message": ""},
-            headers={"content-type": "application/x-www-form-urlencoded"}
+            headers={"content-type": "application/x-www-form-urlencoded"},
         )
 
         assert response.status_code == 422
@@ -94,17 +94,19 @@ class TestMainApp:
         """Test conversation history endpoint"""
         conv_id = "test-conversation-id"
 
-        with patch('src.app.main.chatbot') as mock_chatbot:
+        with patch("src.app.main.chatbot") as mock_chatbot:
             # Mock chatbot response
-            mock_chatbot.get_conversation_history = AsyncMock(return_value=[
-                {
-                    "id": "test-id",
-                    "content": "Hello",
-                    "role": "user",
-                    "timestamp": "2023-01-01T00:00:00",
-                    "metadata": {}
-                }
-            ])
+            mock_chatbot.get_conversation_history = AsyncMock(
+                return_value=[
+                    {
+                        "id": "test-id",
+                        "content": "Hello",
+                        "role": "user",
+                        "timestamp": "2023-01-01T00:00:00",
+                        "metadata": {},
+                    }
+                ]
+            )
 
             response = client.get(f"/conversations/{conv_id}/history")
 
@@ -118,7 +120,7 @@ class TestMainApp:
         """Test conversation history endpoint with limit"""
         conv_id = "test-conversation-id"
 
-        with patch('src.app.main.chatbot') as mock_chatbot:
+        with patch("src.app.main.chatbot") as mock_chatbot:
             # Mock chatbot response
             mock_chatbot.get_conversation_history = AsyncMock(return_value=[])
 
@@ -132,7 +134,7 @@ class TestMainApp:
         """Test conversation history endpoint with error"""
         conv_id = "test-conversation-id"
 
-        with patch('src.app.main.chatbot') as mock_chatbot:
+        with patch("src.app.main.chatbot") as mock_chatbot:
             # Mock chatbot to raise an exception
             mock_chatbot.get_conversation_history.side_effect = Exception("Test error")
 
@@ -154,11 +156,14 @@ class TestMainApp:
 
     def test_cors_middleware(self, client):
         """Test CORS middleware"""
-        response = client.options("/chat", headers={
-            "Origin": "http://localhost:3000",
-            "Access-Control-Request-Method": "POST",
-            "Access-Control-Request-Headers": "Content-Type"
-        })
+        response = client.options(
+            "/chat",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "Content-Type",
+            },
+        )
 
         assert response.status_code == 200
         assert "access-control-allow-origin" in response.headers

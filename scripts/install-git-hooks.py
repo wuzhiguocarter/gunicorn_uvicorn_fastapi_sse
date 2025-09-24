@@ -1,0 +1,308 @@
+#!/usr/bin/env python3
+"""
+Git Hooks安装脚本
+自动安装和配置Git Hooks
+"""
+
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+class GitHookInstaller:
+    """Git Hook安装器"""
+
+    def __init__(self):
+        self.project_root = Path(__file__).parent.parent
+        self.hooks_dir = self.project_root / ".git" / "hooks"
+        self.scripts_dir = self.project_root / "scripts"
+
+    def check_git_repo(self) -> bool:
+        """检查是否为Git仓库"""
+        git_dir = self.project_root / ".git"
+        return git_dir.exists()
+
+    def backup_existing_hooks(self) -> None:
+        """备份现有的hooks"""
+        backup_dir = self.hooks_dir / "backup"
+        backup_dir.mkdir(exist_ok=True)
+
+        for hook_file in self.hooks_dir.glob("*.sample"):
+            if hook_file.stem not in ["pre-commit", "commit-msg", "pre-push"]:
+                continue
+
+            backup_file = backup_dir / hook_file.name
+            if not backup_file.exists():
+                shutil.copy2(hook_file, backup_file)
+                print(f"📦 备份现有hook: {hook_file.name}")
+
+    def install_pre_commit_hook(self) -> None:
+        """安装pre-commit hook"""
+        hook_path = self.hooks_dir / "pre-commit"
+        hook_content = """#!/bin/bash
+# Pre-commit hook
+echo "🔍 Running pre-commit checks..."
+
+# 运行pre-commit
+if command -v pre-commit &> /dev/null; then
+    pre-commit run --all-files
+    if [ $? -ne 0 ]; then
+        echo "❌ Pre-commit checks failed"
+        exit 1
+    fi
+else
+    echo "⚠️  pre-commit not found. Install with: pip install pre-commit"
+fi
+
+echo "✅ Pre-commit checks passed"
+"""
+
+        with open(hook_path, "w") as f:
+            f.write(hook_content)
+
+        os.chmod(hook_path, 0o755)
+        print("✅ 安装 pre-commit hook")
+
+    def install_commit_msg_hook(self) -> None:
+        """安装commit-msg hook"""
+        hook_path = self.hooks_dir / "commit-msg"
+        hook_content = """#!/bin/bash
+# Commit message hook
+echo "📝 Validating commit message..."
+
+# 运行commitlint
+if command -v commitlint &> /dev/null; then
+    commitlint --edit $1
+    if [ $? -ne 0 ]; then
+        echo "❌ Commit message validation failed"
+        echo "   请遵循以下格式: <type>(<scope>): <subject>"
+        echo "   例如: feat(auth): add user login functionality"
+        exit 1
+    fi
+else
+    echo "⚠️  commitlint not found. Install with: npm install -g @commitlint/cli"
+fi
+
+echo "✅ Commit message validation passed"
+"""
+
+        with open(hook_path, "w") as f:
+            f.write(hook_content)
+
+        os.chmod(hook_path, 0o755)
+        print("✅ 安装 commit-msg hook")
+
+    def install_pre_push_hook(self) -> None:
+        """安装pre-push hook"""
+        hook_path = self.hooks_dir / "pre-push"
+        hook_content = """#!/bin/bash
+# Pre-push hook
+echo "🚀 Running pre-push checks..."
+
+# 验证分支名称
+python scripts/validate-branch-name.py
+if [ $? -ne 0 ]; then
+    echo "❌ Branch name validation failed"
+    exit 1
+fi
+
+# 运行测试
+echo "🧪 Running tests..."
+if command -v uv &> /dev/null; then
+    uv run pytest src/tests/ -v
+else
+    python -m pytest src/tests/ -v
+fi
+
+if [ $? -ne 0 ]; then
+    echo "❌ Tests failed"
+    exit 1
+fi
+
+echo "✅ Pre-push checks passed"
+"""
+
+        with open(hook_path, "w") as f:
+            f.write(hook_content)
+
+        os.chmod(hook_path, 0o755)
+        print("✅ 安装 pre-push hook")
+
+    def install_prepare_commit_msg_hook(self) -> None:
+        """安装prepare-commit-msg hook"""
+        hook_path = self.hooks_dir / "prepare-commit-msg"
+        hook_content = """#!/bin/bash
+# Prepare commit message hook
+echo "📝 Preparing commit message template..."
+
+# 如果是合并提交，不处理
+if [ "$2" = "merge" ]; then
+    exit 0
+fi
+
+# 如果是squash提交，不处理
+if [ "$2" = "squash" ]; then
+    exit 0
+fi
+
+# 如果提交消息已经存在，不处理
+if [ -s "$1" ]; then
+    exit 0
+fi
+
+# 获取当前分支名称
+BRANCH_NAME=$(git branch --show-current)
+TICKET_NUMBER=$(echo $BRANCH_NAME | grep -oE '[0-9]+$' | tail -1)
+
+# 如果找到任务号，添加到提交消息
+if [ -n "$TICKET_NUMBER" ]; then
+    echo "# #$TICKET_NUMBER" >> "$1"
+    echo "" >> "$1"
+    echo "# 请选择提交类型:" >> "$1"
+    echo "# feat: 新功能" >> "$1"
+    echo "# fix: 修复bug" >> "$1"
+    echo "# docs: 文档更新" >> "$1"
+    echo "# style: 代码格式调整" >> "$1"
+    echo "# refactor: 重构代码" >> "$1"
+    echo "# test: 测试相关" >> "$1"
+    echo "# chore: 构建或工具变动" >> "$1"
+fi
+"""
+
+        with open(hook_path, "w") as f:
+            f.write(hook_content)
+
+        os.chmod(hook_path, 0o755)
+        print("✅ 安装 prepare-commit-msg hook")
+
+    def setup_pre_commit(self) -> None:
+        """设置pre-commit配置"""
+        try:
+            subprocess.run(["pre-commit", "install"], check=True)
+            print("✅ 安装 pre-commit")
+        except subprocess.CalledProcessError:
+            print("⚠️  pre-commit安装失败，请手动安装: pip install pre-commit")
+
+    def create_git_config(self) -> None:
+        """创建Git配置"""
+        git_config = {
+            "commit.template": ".gitmessage",
+            "core.hooksPath": ".git/hooks",
+            "branch.autosetuprebase": "always",
+            "pull.rebase": "true",
+        }
+
+        for key, value in git_config.items():
+            try:
+                subprocess.run(
+                    ["git", "config", "--local", key, value],
+                    check=True,
+                    capture_output=True,
+                )
+                print(f"✅ 设置 git config {key} = {value}")
+            except subprocess.CalledProcessError:
+                print(f"⚠️  设置 git config {key} 失败")
+
+    def create_commit_template(self) -> None:
+        """创建提交模板"""
+        template_path = self.project_root / ".gitmessage"
+        template_content = """# <type>(<scope>): <subject>
+#
+# # 空行
+# # body (可选)
+#
+# # 空行
+# # footer (可选)
+#
+# # 类型说明:
+# # feat: 新功能
+# # fix: 修复bug
+# # docs: 文档更新
+# # style: 代码格式调整
+# # refactor: 重构代码
+# # test: 测试相关
+# # chore: 构建或工具变动
+# # perf: 性能优化
+# # ci: CI配置修改
+# # build: 构建系统修改
+# # revert: 代码回滚
+#
+# # 示例:
+# # feat(auth): add user login functionality
+# # fix(api): resolve memory leak in request handler
+# # docs(readme): update installation instructions
+"""
+
+        with open(template_path, "w") as f:
+            f.write(template_content)
+        print("✅ 创建提交模板")
+
+    def install_hooks(self) -> None:
+        """安装所有hooks"""
+        print("🔧 开始安装 Git Hooks...")
+
+        if not self.check_git_repo():
+            print("❌ 当前目录不是Git仓库")
+            sys.exit(1)
+
+        # 创建hooks目录
+        self.hooks_dir.mkdir(exist_ok=True)
+
+        # 备份现有hooks
+        self.backup_existing_hooks()
+
+        # 安装hooks
+        self.install_pre_commit_hook()
+        self.install_commit_msg_hook()
+        self.install_pre_push_hook()
+        self.install_prepare_commit_msg_hook()
+
+        # 设置pre-commit
+        self.setup_pre_commit()
+
+        # 创建Git配置
+        self.create_git_config()
+
+        # 创建提交模板
+        self.create_commit_template()
+
+        print("\n🎉 Git Hooks 安装完成!")
+        print("\n📋 已安装的hooks:")
+        print("   • pre-commit: 提交前检查代码质量")
+        print("   • commit-msg: 验证提交消息格式")
+        print("   • pre-push: 推送前验证分支名称和运行测试")
+        print("   • prepare-commit-msg: 准备提交消息模板")
+        print("\n🔧 相关配置:")
+        print("   • 创建了提交模板 (.gitmessage)")
+        print("   • 设置了Git配置选项")
+        print("   • 配置了pre-commit工具")
+
+    def uninstall_hooks(self) -> None:
+        """卸载hooks"""
+        print("🧹 卸载 Git Hooks...")
+
+        hooks_to_remove = ["pre-commit", "commit-msg", "pre-push", "prepare-commit-msg"]
+
+        for hook in hooks_to_remove:
+            hook_path = self.hooks_dir / hook
+            if hook_path.exists():
+                hook_path.unlink()
+                print(f"🗑️  删除 {hook}")
+
+        print("✅ Git Hooks 卸载完成")
+
+
+def main():
+    """主函数"""
+    installer = GitHookInstaller()
+
+    if len(sys.argv) > 1 and sys.argv[1] == "--uninstall":
+        installer.uninstall_hooks()
+    else:
+        installer.install_hooks()
+
+
+if __name__ == "__main__":
+    main()

@@ -2,9 +2,9 @@
 Test cases for conversation manager
 """
 
-import pytest
-import asyncio
 from uuid import uuid4
+
+import pytest
 
 from src.app.conversation_manager import ConversationManager
 from src.app.models import Message
@@ -88,7 +88,9 @@ class TestConversationManager:
         assert len(history) == 3
 
         # Get limited history
-        limited_history = await manager.get_conversation_history(conversation.id, limit=2)
+        limited_history = await manager.get_conversation_history(
+            conversation.id, limit=2
+        )
         assert len(limited_history) == 2
         assert limited_history[0].content == "Message 1"
         assert limited_history[1].content == "Message 2"
@@ -159,9 +161,14 @@ class TestConversationManager:
 
         # Mock the updated_at to be very old
         import time
+
         old_time = time.time() - (25 * 3600)  # 25 hours ago
-        conversations[1].updated_at = type(conversations[1].updated_at).fromtimestamp(old_time)
-        conversations[2].updated_at = type(conversations[2].updated_at).fromtimestamp(old_time)
+        conversations[1].updated_at = type(conversations[1].updated_at).fromtimestamp(
+            old_time
+        )
+        conversations[2].updated_at = type(conversations[2].updated_at).fromtimestamp(
+            old_time
+        )
 
         # Update in manager
         manager._conversations[conversations[1].id] = conversations[1]

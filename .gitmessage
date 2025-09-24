@@ -1,0 +1,25 @@
+# <type>(<scope>): <subject>
+#
+# # 空行
+# # body (可选)
+#
+# # 空行
+# # footer (可选)
+#
+# # 类型说明:
+# # feat: 新功能
+# # fix: 修复bug
+# # docs: 文档更新
+# # style: 代码格式调整
+# # refactor: 重构代码
+# # test: 测试相关
+# # chore: 构建或工具变动
+# # perf: 性能优化
+# # ci: CI配置修改
+# # build: 构建系统修改
+# # revert: 代码回滚
+#
+# # 示例:
+# # feat(auth): add user login functionality
+# # fix(api): resolve memory leak in request handler
+# # docs(readme): update installation instructions

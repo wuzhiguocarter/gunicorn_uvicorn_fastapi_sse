@@ -1,0 +1,124 @@
+name: Branch Protection
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-branch-protection:
+    name: Check Branch Protection Rules
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check if branch is protected
+        run: |
+          BRANCH_NAME="${{ github.ref_name }}"
+
+          # 检查是否为受保护分支
+          if [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == "develop" ]]; then
+            echo "🔍 Checking protected branch: $BRANCH_NAME"
+
+            # 检查是否为PR合并
+            if [[ "${{ github.event_name }}" == "push" ]]; then
+              # 获取最新提交信息
+              COMMIT_MSG=$(git log --format=%B -n 1 HEAD)
+
+              # 检查是否为合并提交
+              if [[ "$COMMIT_MSG" == *"Merge pull request"* ]]; then
+                echo "✅ Merge commit detected for protected branch"
+              else
+                echo "❌ Direct push to protected branch is not allowed"
+                echo "   Please create a pull request instead"
+                exit 1
+              fi
+            fi
+          else
+            echo "✅ Branch $BRANCH_NAME is not protected"
+          fi
+
+  enforce-merge-strategy:
+    name: Enforce Merge Strategy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check merge strategy
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+
+          # 检查分支命名规范
+          python scripts/validate-branch-name.py "$BRANCH_NAME"
+
+          # 检查是否为功能分支
+          if [[ "$BRANCH_NAME" == feature/* ]]; then
+            echo "✅ Feature branch detected"
+            # 检查是否从develop创建
+            BASE_BRANCH="${{ github.base_ref }}"
+            if [[ "$BASE_BRANCH" != "develop" ]]; then
+              echo "⚠️  Feature branches should be based on 'develop'"
+              echo "   Current base: $BASE_BRANCH"
+            fi
+          elif [[ "$BRANCH_NAME" == hotfix/* ]]; then
+            echo "✅ Hotfix branch detected"
+            # 检查是否从main创建
+            BASE_BRANCH="${{ github.base_ref }}"
+            if [[ "$BASE_BRANCH" != "main" ]]; then
+              echo "⚠️  Hotfix branches should be based on 'main'"
+              echo "   Current base: $BASE_BRANCH"
+            fi
+          fi
+
+  check-required-checks:
+    name: Check Required Status Checks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Wait for required checks
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const prNumber = context.issue.number;
+
+            // 等待所有检查完成
+            await github.rest.checks.listForRef({
+              owner,
+              repo,
+              ref: `refs/pull/${prNumber}/head`
+            });
+
+      - name: Check required checks passed
+        run: |
+          echo "✅ All required checks must pass before merge"
+          echo "   Required checks:"
+          echo "   - Validate Branch Name"
+          echo "   - Validate Commit Messages"
+          echo "   - Code Quality Checks"
+          echo "   - Run Tests"
+          echo "   - Security Scan"
+          echo "   - Build Check"
+
+  prevent-force-push:
+    name: Prevent Force Push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.event.forced
+
+    steps:
+      - name: Reject force push
+        run: |
+          echo "❌ Force push is not allowed to protected branches"
+          echo "   Branch: ${{ github.ref_name }}"
+          echo "   Please use regular push or create a pull request"
+          exit 1

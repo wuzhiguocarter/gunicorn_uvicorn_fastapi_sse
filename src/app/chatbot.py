@@ -4,15 +4,14 @@ ChatBot implementation with SSE support
 
 import asyncio
 import json
-from typing import AsyncGenerator, Optional
+from collections.abc import AsyncGenerator
 
 from fastapi import HTTPException, status
-from sse_starlette.sse import EventSourceResponse
 
 from .config import settings
 from .conversation_manager import conversation_manager
 from .logger import get_logger
-from .models import ChatRequest, ChatResponse, Message, SSEEvent
+from .models import ChatRequest, Message, SSEEvent
 
 logger = get_logger(__name__)
 
@@ -66,7 +65,9 @@ class ChatBot:
         try:
             # Get or create conversation
             if request.conversation_id:
-                conversation = await conversation_manager.get_conversation(request.conversation_id)
+                conversation = await conversation_manager.get_conversation(
+                    request.conversation_id
+                )
                 if not conversation:
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
@@ -146,16 +147,18 @@ class ChatBot:
             )
         finally:
             # Unregister connection
-            if 'conversation' in locals() and conversation is not None:
+            if "conversation" in locals() and conversation is not None:
                 await conversation_manager.unregister_connection(conversation.id)
 
     async def get_conversation_history(
-        self, conversation_id: str, limit: Optional[int] = None
+        self, conversation_id: str, limit: int | None = None
     ) -> list[dict]:
         """Get conversation history"""
         try:
             conv_id = conversation_id
-            messages = await conversation_manager.get_conversation_history(conv_id, limit)
+            messages = await conversation_manager.get_conversation_history(
+                conv_id, limit
+            )
             if messages is None:
                 return []
 
@@ -170,7 +173,9 @@ class ChatBot:
                 for msg in messages
             ]
         except Exception as e:
-            logger.error("get_history_error", error=str(e), conversation_id=conversation_id)
+            logger.error(
+                "get_history_error", error=str(e), conversation_id=conversation_id
+            )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to retrieve conversation history",

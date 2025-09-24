@@ -2,10 +2,8 @@
 Conversation management for the ChatBot SSE Server
 """
 
-import asyncio
 import time
 from collections import defaultdict
-from typing import Dict, Optional
 from uuid import UUID
 
 from .logger import get_logger
@@ -18,9 +16,9 @@ class ConversationManager:
     """Manages conversation state and history"""
 
     def __init__(self, max_history_length: int = 10):
-        self._conversations: Dict[UUID, Conversation] = {}
+        self._conversations: dict[UUID, Conversation] = {}
         self._max_history_length = max_history_length
-        self._active_connections: Dict[UUID, int] = defaultdict(int)
+        self._active_connections: dict[UUID, int] = defaultdict(int)
         self._metrics = {
             "total_conversations": 0,
             "total_messages": 0,
@@ -35,13 +33,13 @@ class ConversationManager:
         logger.info("conversation_created", conversation_id=str(conversation.id))
         return conversation
 
-    async def get_conversation(self, conversation_id: UUID) -> Optional[Conversation]:
+    async def get_conversation(self, conversation_id: UUID) -> Conversation | None:
         """Get a conversation by ID"""
         return self._conversations.get(conversation_id)
 
     async def add_message(
         self, conversation_id: UUID, message: Message
-    ) -> Optional[Conversation]:
+    ) -> Conversation | None:
         """Add a message to a conversation"""
         conversation = await self.get_conversation(conversation_id)
         if not conversation:
@@ -49,16 +47,22 @@ class ConversationManager:
 
         # Limit conversation history
         if len(conversation.messages) >= self._max_history_length:
-            conversation.messages = conversation.messages[-self._max_history_length + 1 :]
+            conversation.messages = conversation.messages[
+                -self._max_history_length + 1 :
+            ]
 
         conversation.add_message(message)
         self._metrics["total_messages"] += 1
-        logger.info("message_added", conversation_id=str(conversation_id), message_id=str(message.id))
+        logger.info(
+            "message_added",
+            conversation_id=str(conversation_id),
+            message_id=str(message.id),
+        )
         return conversation
 
     async def get_conversation_history(
-        self, conversation_id: UUID, limit: Optional[int] = None
-    ) -> Optional[list[Message]]:
+        self, conversation_id: UUID, limit: int | None = None
+    ) -> list[Message] | None:
         """Get conversation history"""
         conversation = await self.get_conversation(conversation_id)
         if not conversation:
@@ -80,7 +84,9 @@ class ConversationManager:
             self._active_connections[conversation_id] -= 1
             if self._active_connections[conversation_id] <= 0:
                 del self._active_connections[conversation_id]
-            logger.debug("connection_unregistered", conversation_id=str(conversation_id))
+            logger.debug(
+                "connection_unregistered", conversation_id=str(conversation_id)
+            )
 
     async def get_metrics(self) -> dict:
         """Get system metrics"""

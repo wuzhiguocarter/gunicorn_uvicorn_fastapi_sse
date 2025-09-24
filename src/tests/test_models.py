@@ -2,9 +2,10 @@
 Test cases for data models
 """
 
-import pytest
 from datetime import datetime
 from uuid import UUID, uuid4
+
+import pytest
 
 from src.app.models import ChatRequest, ChatResponse, Conversation, Message
 
@@ -23,11 +24,7 @@ class TestMessage:
     def test_message_with_metadata(self):
         """Test message with metadata"""
         metadata = {"source": "web", "language": "en"}
-        message = Message(
-            content="Hello",
-            role="user",
-            metadata=metadata
-        )
+        message = Message(content="Hello", role="user", metadata=metadata)
         assert message.metadata == metadata
 
 
@@ -80,8 +77,12 @@ class TestConversation:
 
         # Should be limited to 10 messages
         assert len(conversation.messages) == 10
-        assert conversation.messages[0].content == "Message 5"  # First message should be index 5
-        assert conversation.messages[-1].content == "Message 14"  # Last message should be index 14
+        assert (
+            conversation.messages[0].content == "Message 5"
+        )  # First message should be index 5
+        assert (
+            conversation.messages[-1].content == "Message 14"
+        )  # Last message should be index 14
 
 
 class TestChatRequest:
@@ -97,19 +98,13 @@ class TestChatRequest:
     def test_chat_request_with_conversation_id(self):
         """Test chat request with conversation ID"""
         conv_id = uuid4()
-        request = ChatRequest(
-            message="Hello",
-            conversation_id=conv_id
-        )
+        request = ChatRequest(message="Hello", conversation_id=conv_id)
         assert request.conversation_id == conv_id
 
     def test_chat_request_with_metadata(self):
         """Test chat request with metadata"""
         metadata = {"source": "web"}
-        request = ChatRequest(
-            message="Hello",
-            metadata=metadata
-        )
+        request = ChatRequest(message="Hello", metadata=metadata)
         assert request.metadata == metadata
 
     def test_message_validation(self):
@@ -130,10 +125,7 @@ class TestChatResponse:
         """Test chat response creation"""
         message = Message(content="Hello", role="assistant")
         conversation_id = uuid4()
-        response = ChatResponse(
-            message=message,
-            conversation_id=conversation_id
-        )
+        response = ChatResponse(message=message, conversation_id=conversation_id)
         assert response.message == message
         assert response.conversation_id == conversation_id
         assert response.is_complete is False
@@ -144,8 +136,6 @@ class TestChatResponse:
         message = Message(content="Hello", role="assistant")
         conversation_id = uuid4()
         response = ChatResponse(
-            message=message,
-            conversation_id=conversation_id,
-            is_complete=True
+            message=message, conversation_id=conversation_id, is_complete=True
         )
         assert response.is_complete is True

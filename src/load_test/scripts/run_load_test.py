@@ -16,13 +16,19 @@ from src.load_test.client import ChatBotLoadTester
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run load tests for ChatBot SSE Server")
+    parser = argparse.ArgumentParser(
+        description="Run load tests for ChatBot SSE Server"
+    )
     parser.add_argument("--url", default="http://localhost:8000", help="Server URL")
     parser.add_argument("--requests", type=int, default=100, help="Number of requests")
     parser.add_argument("--concurrency", type=int, default=10, help="Concurrency level")
-    parser.add_argument("--multi-turn", action="store_true", help="Enable multi-turn conversation")
+    parser.add_argument(
+        "--multi-turn", action="store_true", help="Enable multi-turn conversation"
+    )
     parser.add_argument("--ramp-up", type=int, help="Ramp-up duration in seconds")
-    parser.add_argument("--duration", type=int, default=60, help="Test duration in seconds")
+    parser.add_argument(
+        "--duration", type=int, default=60, help="Test duration in seconds"
+    )
     parser.add_argument("--output", help="Output file for results")
     parser.add_argument("--simple", action="store_true", help="Run simple test")
 
@@ -31,6 +37,7 @@ def main():
     if args.simple:
         # Run simple test
         from src.load_test.simple_client import run_simple_test
+
         run_simple_test()
         return
 
@@ -76,14 +83,14 @@ def main():
             print(f"Throughput: {metrics['throughput']:.2f} requests/second")
             print(f"Total Duration: {metrics['total_duration']:.2f}s")
 
-            if metrics['errors']:
+            if metrics["errors"]:
                 print(f"\nErrors ({len(metrics['errors'])}):")
-                for error in metrics['errors'][:5]:  # Show first 5 errors
+                for error in metrics["errors"][:5]:  # Show first 5 errors
                     print(f"  - {error['type']}: {error['error']}")
 
             # Save results to file
             if args.output:
-                with open(args.output, 'w') as f:
+                with open(args.output, "w") as f:
                     json.dump(results, f, indent=2)
                 print(f"\nResults saved to {args.output}")
 

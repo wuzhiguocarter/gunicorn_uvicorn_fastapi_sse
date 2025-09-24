@@ -4,10 +4,9 @@ FastAPI application with SSE ChatBot
 
 import time
 from contextlib import asynccontextmanager
-from typing import List, Optional
 from uuid import UUID
 
-from fastapi import FastAPI, Form, HTTPException, Request, Query
+from fastapi import FastAPI, Form, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
@@ -16,7 +15,7 @@ from .chatbot import chatbot
 from .config import settings
 from .conversation_manager import conversation_manager
 from .logger import get_logger, setup_logging
-from .models import ChatRequest, HealthResponse, MetricsResponse, Message, Conversation
+from .models import ChatRequest, HealthResponse, MetricsResponse
 
 setup_logging()
 logger = get_logger(__name__)
@@ -236,7 +235,9 @@ async def root():
 @app.post("/chat")
 async def chat_endpoint(
     message: str = Form(..., description="Message to send to the chatbot"),
-    conversation_id: Optional[str] = Form(None, description="Optional conversation ID for multi-turn conversations"),
+    conversation_id: str | None = Form(
+        None, description="Optional conversation ID for multi-turn conversations"
+    ),
 ):
     """Chat endpoint with SSE streaming
 
@@ -265,7 +266,9 @@ async def chat_endpoint(
             try:
                 conv_id = UUID(conversation_id)
             except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid conversation_id format")
+                raise HTTPException(
+                    status_code=400, detail="Invalid conversation_id format"
+                )
 
         chat_request = ChatRequest(
             message=message,
@@ -323,10 +326,12 @@ async def get_metrics():
     )
 
 
-@app.get("/conversations/{conversation_id}/history", response_model=List[dict])
+@app.get("/conversations/{conversation_id}/history", response_model=list[dict])
 async def get_conversation_history(
     conversation_id: str,
-    limit: Optional[int] = Query(None, ge=1, le=100, description="Maximum number of messages to return")
+    limit: int | None = Query(
+        None, ge=1, le=100, description="Maximum number of messages to return"
+    ),
 ):
     """Get conversation history for a specific conversation
 
@@ -340,7 +345,9 @@ async def get_conversation_history(
     try:
         return await chatbot.get_conversation_history(conversation_id, limit)
     except Exception as e:
-        logger.error("conversation_history_error", error=str(e), conversation_id=conversation_id)
+        logger.error(
+            "conversation_history_error", error=str(e), conversation_id=conversation_id
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 

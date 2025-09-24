@@ -2,13 +2,11 @@
 Test cases for load testing utilities
 """
 
-import pytest
-import asyncio
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from unittest.mock import AsyncMock, patch
 
-from src.load_test.client import TestMetrics, ChatBotLoadTester
+import pytest
+
+from src.load_test.client import ChatBotLoadTester, TestMetrics
 
 
 class TestTestMetrics:
@@ -21,7 +19,7 @@ class TestTestMetrics:
         assert metrics.successful_requests == 0
         assert metrics.failed_requests == 0
         assert metrics.total_response_time == 0.0
-        assert metrics.min_response_time == float('inf')
+        assert metrics.min_response_time == float("inf")
         assert metrics.max_response_time == 0.0
         assert len(metrics.response_times) == 0
         assert len(metrics.errors) == 0
@@ -120,7 +118,7 @@ class TestChatBotLoadTester:
     async def test_health_check_success(self, tester):
         """Test successful health check"""
         async with tester:
-            with patch.object(tester.session, 'get') as mock_get:
+            with patch.object(tester.session, "get") as mock_get:
                 mock_response = AsyncMock()
                 mock_response.status = 200
                 mock_get.return_value.__aenter__.return_value = mock_response
@@ -132,7 +130,7 @@ class TestChatBotLoadTester:
     async def test_health_check_failure(self, tester):
         """Test failed health check"""
         async with tester:
-            with patch.object(tester.session, 'get') as mock_get:
+            with patch.object(tester.session, "get") as mock_get:
                 mock_get.side_effect = Exception("Connection error")
 
                 result = await tester.health_check()
@@ -143,17 +141,17 @@ class TestChatBotLoadTester:
         """Test successful single request"""
         async with tester:
             # Mock the session and response
-            with patch.object(tester.session, 'post') as mock_post:
+            with patch.object(tester.session, "post") as mock_post:
                 mock_response = AsyncMock()
                 mock_response.status = 200
 
                 # Mock SSE stream - using actual server format
                 mock_content = AsyncMock()
                 mock_content.__aiter__.return_value = [
-                    b"data: event='connected' data='{\"type\": \"connected\", \"conversation_id\": \"test\"}'\n",
-                    b"data: event='message' data='{\"type\": \"partial_response\", \"content\": \"Hello\"}'\n",
-                    b"data: event='message' data='{\"type\": \"partial_response\", \"content\": \"Hello\"}'\n",
-                    b"data: event='completed' data='{\"type\": \"completed\", \"content\": \"Hello\"}'\n",
+                    b'data: event=\'connected\' data=\'{"type": "connected", "conversation_id": "test"}\'\n',
+                    b'data: event=\'message\' data=\'{"type": "partial_response", "content": "Hello"}\'\n',
+                    b'data: event=\'message\' data=\'{"type": "partial_response", "content": "Hello"}\'\n',
+                    b'data: event=\'completed\' data=\'{"type": "completed", "content": "Hello"}\'\n',
                 ]
                 mock_response.content = mock_content
                 mock_post.return_value.__aenter__.return_value = mock_response
@@ -169,7 +167,7 @@ class TestChatBotLoadTester:
     async def test_send_single_request_http_error(self, tester):
         """Test single request with HTTP error"""
         async with tester:
-            with patch.object(tester.session, 'post') as mock_post:
+            with patch.object(tester.session, "post") as mock_post:
                 mock_response = AsyncMock()
                 mock_response.status = 500
                 mock_response.text = AsyncMock(return_value="Server Error")
@@ -184,7 +182,7 @@ class TestChatBotLoadTester:
     async def test_send_single_request_connection_error(self, tester):
         """Test single request with connection error"""
         async with tester:
-            with patch.object(tester.session, 'post') as mock_post:
+            with patch.object(tester.session, "post") as mock_post:
                 mock_post.side_effect = Exception("Connection failed")
 
                 result = await tester.send_single_request("Hello")
@@ -208,11 +206,11 @@ class TestChatBotLoadTester:
                     "message_length": 10,
                 }
 
-            with patch.object(tester, 'send_single_request', side_effect=mock_send_request):
+            with patch.object(
+                tester, "send_single_request", side_effect=mock_send_request
+            ):
                 results = await tester.run_concurrent_test(
-                    num_requests=10,
-                    concurrency=2,
-                    multi_turn=False
+                    num_requests=10, concurrency=2, multi_turn=False
                 )
 
                 assert "results" in results
@@ -235,17 +233,26 @@ class TestChatBotLoadTester:
                     tester.metrics.total_requests += 1
                     tester.metrics.successful_requests += 1
                     tester.metrics.add_response_time(0.5)
-                    return {"success": True, "response_time": 0.5, "event_count": 3, "message_length": 10}
+                    return {
+                        "success": True,
+                        "response_time": 0.5,
+                        "event_count": 3,
+                        "message_length": 10,
+                    }
                 else:  # Last 2 requests fail
                     tester.metrics.total_requests += 1
                     tester.metrics.add_error(Exception("Test error"))
-                    return {"success": False, "response_time": 0.2, "error": "Test error"}
+                    return {
+                        "success": False,
+                        "response_time": 0.2,
+                        "error": "Test error",
+                    }
 
-            with patch.object(tester, 'send_single_request', side_effect=mock_send_request):
+            with patch.object(
+                tester, "send_single_request", side_effect=mock_send_request
+            ):
                 results = await tester.run_concurrent_test(
-                    num_requests=4,
-                    concurrency=2,
-                    multi_turn=False
+                    num_requests=4, concurrency=2, multi_turn=False
                 )
 
                 assert results["metrics"]["total_requests"] == 4
@@ -258,7 +265,7 @@ class TestChatBotLoadTester:
     async def test_get_metrics_success(self, tester):
         """Test getting server metrics successfully"""
         async with tester:
-            with patch.object(tester.session, 'get') as mock_get:
+            with patch.object(tester.session, "get") as mock_get:
                 mock_response = AsyncMock()
                 mock_response.status = 200
                 mock_response.json = AsyncMock(return_value={"total_requests": 100})
@@ -271,7 +278,7 @@ class TestChatBotLoadTester:
     async def test_get_metrics_failure(self, tester):
         """Test getting server metrics when it fails"""
         async with tester:
-            with patch.object(tester.session, 'get') as mock_get:
+            with patch.object(tester.session, "get") as mock_get:
                 mock_get.side_effect = Exception("Connection error")
 
                 result = await tester.get_metrics()

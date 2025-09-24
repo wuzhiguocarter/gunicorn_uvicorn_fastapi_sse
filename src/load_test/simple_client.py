@@ -4,17 +4,16 @@ Simple synchronous client for testing the ChatBot SSE Server
 
 import json
 import time
-from typing import Dict, Any, Optional
+from typing import Any
 
 import httpx
-from tqdm import tqdm
 
 
 class SimpleChatClient:
     """Simple synchronous client for testing"""
 
     def __init__(self, base_url: str = "http://localhost:8000"):
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.client = httpx.Client()
 
     def __enter__(self):
@@ -23,7 +22,9 @@ class SimpleChatClient:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.client.close()
 
-    def send_message(self, message: str, conversation_id: Optional[str] = None) -> Dict[str, Any]:
+    def send_message(
+        self, message: str, conversation_id: str | None = None
+    ) -> dict[str, Any]:
         """Send a message and get response"""
         data = {
             "message": message,
@@ -51,16 +52,16 @@ class SimpleChatClient:
 
         for line in response.iter_lines():
             if line:  # Skip empty lines
-                line_str = line.decode('utf-8') if isinstance(line, bytes) else line
-                if line_str.startswith('data: '):
+                line_str = line.decode("utf-8") if isinstance(line, bytes) else line
+                if line_str.startswith("data: "):
                     try:
                         data = json.loads(line_str[6:])
                         event_count += 1
 
-                        if data.get('type') == 'connected':
-                            current_conversation_id = data.get('conversation_id')
-                        elif data.get('type') in ['partial_response', 'complete']:
-                            content = data.get('content', '')
+                        if data.get("type") == "connected":
+                            current_conversation_id = data.get("conversation_id")
+                        elif data.get("type") in ["partial_response", "complete"]:
+                            content = data.get("content", "")
                             full_content += content
 
                     except json.JSONDecodeError:
@@ -81,7 +82,7 @@ class SimpleChatClient:
         except Exception:
             return False
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """Get server metrics"""
         try:
             response = self.client.get(f"{self.base_url}/metrics")
@@ -110,7 +111,7 @@ def run_simple_test():
     ]
 
     for i, message in enumerate(messages):
-        print(f"\nMessage {i+1}: {message}")
+        print(f"\nMessage {i + 1}: {message}")
 
         start_time = time.time()
         result = client.send_message(message)

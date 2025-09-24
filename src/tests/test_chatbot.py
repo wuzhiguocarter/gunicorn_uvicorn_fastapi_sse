@@ -3,9 +3,10 @@ Test cases for ChatBot
 """
 
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
+
+import pytest
 
 from src.app.chatbot import ChatBot
 from src.app.models import ChatRequest, Message
@@ -38,7 +39,9 @@ class TestChatBot:
         user_message = "How are you?"
         response_chunks = []
 
-        async for chunk in chatbot.generate_response(user_message, sample_conversation_history):
+        async for chunk in chatbot.generate_response(
+            user_message, sample_conversation_history
+        ):
             response_chunks.append(chunk)
 
         assert len(response_chunks) > 0
@@ -51,7 +54,7 @@ class TestChatBot:
         request = ChatRequest(message="Hello")
         sse_events = []
 
-        with patch('src.app.chatbot.conversation_manager') as mock_manager:
+        with patch("src.app.chatbot.conversation_manager") as mock_manager:
             # Mock conversation manager methods
             mock_manager.create_conversation = AsyncMock()
             mock_manager.create_conversation.return_value = MagicMock(id=uuid4())
@@ -76,7 +79,7 @@ class TestChatBot:
         request = ChatRequest(message="Hello", conversation_id=conv_id)
         sse_events = []
 
-        with patch('src.app.chatbot.conversation_manager') as mock_manager:
+        with patch("src.app.chatbot.conversation_manager") as mock_manager:
             # Mock conversation manager methods
             mock_conversation = MagicMock()
             mock_conversation.id = conv_id
@@ -100,7 +103,7 @@ class TestChatBot:
         request = ChatRequest(message="Hello", conversation_id=conv_id)
         sse_events = []
 
-        with patch('src.app.chatbot.conversation_manager') as mock_manager:
+        with patch("src.app.chatbot.conversation_manager") as mock_manager:
             # Mock conversation manager to return None for non-existent conversation
             mock_manager.get_conversation = AsyncMock(return_value=None)
 
@@ -117,9 +120,11 @@ class TestChatBot:
         request = ChatRequest(message="Hello")
         sse_events = []
 
-        with patch('src.app.chatbot.conversation_manager') as mock_manager:
+        with patch("src.app.chatbot.conversation_manager") as mock_manager:
             # Mock conversation manager to raise an exception
-            mock_manager.create_conversation = AsyncMock(side_effect=Exception("Test error"))
+            mock_manager.create_conversation = AsyncMock(
+                side_effect=Exception("Test error")
+            )
 
             async for event in chatbot.stream_chat(request):
                 sse_events.append(event)
@@ -133,18 +138,27 @@ class TestChatBot:
         """Test getting conversation history successfully"""
         conv_id = str(uuid4())
 
-        with patch('src.app.chatbot.conversation_manager') as mock_manager:
+        with patch("src.app.chatbot.conversation_manager") as mock_manager:
             # Mock conversation manager
             mock_messages = [
-                MagicMock(id=uuid4(), content="Hello", role="user", timestamp=MagicMock()),
-                MagicMock(id=uuid4(), content="Hi there", role="assistant", timestamp=MagicMock()),
+                MagicMock(
+                    id=uuid4(), content="Hello", role="user", timestamp=MagicMock()
+                ),
+                MagicMock(
+                    id=uuid4(),
+                    content="Hi there",
+                    role="assistant",
+                    timestamp=MagicMock(),
+                ),
             ]
 
             for msg in mock_messages:
                 msg.id = str(msg.id)
                 msg.timestamp.isoformat = MagicMock(return_value="2023-01-01T00:00:00")
 
-            mock_manager.get_conversation_history = AsyncMock(return_value=mock_messages)
+            mock_manager.get_conversation_history = AsyncMock(
+                return_value=mock_messages
+            )
 
             history = await chatbot.get_conversation_history(conv_id)
 
@@ -157,7 +171,7 @@ class TestChatBot:
         """Test getting conversation history when not found"""
         conv_id = str(uuid4())
 
-        with patch('src.app.chatbot.conversation_manager') as mock_manager:
+        with patch("src.app.chatbot.conversation_manager") as mock_manager:
             # Mock conversation manager to return None
             mock_manager.get_conversation_history = AsyncMock(return_value=None)
 
@@ -170,10 +184,15 @@ class TestChatBot:
         """Test getting conversation history with limit"""
         conv_id = str(uuid4())
 
-        with patch('src.app.chatbot.conversation_manager') as mock_manager:
+        with patch("src.app.chatbot.conversation_manager") as mock_manager:
             # Mock conversation manager - return only 3 messages when limit is 3
             mock_messages = [
-                MagicMock(id=uuid4(), content=f"Message {i}", role="user", timestamp=MagicMock())
+                MagicMock(
+                    id=uuid4(),
+                    content=f"Message {i}",
+                    role="user",
+                    timestamp=MagicMock(),
+                )
                 for i in range(3)  # Return only 3 messages to simulate the limit
             ]
 
@@ -181,7 +200,9 @@ class TestChatBot:
                 msg.id = str(msg.id)
                 msg.timestamp.isoformat = MagicMock(return_value="2023-01-01T00:00:00")
 
-            mock_manager.get_conversation_history = AsyncMock(return_value=mock_messages)
+            mock_manager.get_conversation_history = AsyncMock(
+                return_value=mock_messages
+            )
 
             history = await chatbot.get_conversation_history(conv_id, limit=3)
 
@@ -192,9 +213,11 @@ class TestChatBot:
         """Test error handling in getting conversation history"""
         conv_id = str(uuid4())
 
-        with patch('src.app.chatbot.conversation_manager') as mock_manager:
+        with patch("src.app.chatbot.conversation_manager") as mock_manager:
             # Mock conversation manager to raise an exception
-            mock_manager.get_conversation_history = AsyncMock(side_effect=Exception("Test error"))
+            mock_manager.get_conversation_history = AsyncMock(
+                side_effect=Exception("Test error")
+            )
 
             with pytest.raises(Exception):
                 await chatbot.get_conversation_history(conv_id)
