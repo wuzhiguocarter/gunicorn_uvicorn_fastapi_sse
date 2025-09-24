@@ -81,7 +81,7 @@ class RampUpLoadTester:
             async with aiohttp.ClientSession() as session:
                 async with session.get(f"{self.base_url}/health") as response:
                     return response.status == 200
-        except:
+        except Exception:
             return False
 
     async def get_server_metrics(self) -> dict[str, Any]:
@@ -91,7 +91,7 @@ class RampUpLoadTester:
                 async with session.get(f"{self.base_url}/metrics") as response:
                     if response.status == 200:
                         return await response.json()
-        except:
+        except Exception:
             pass
         return {}
 

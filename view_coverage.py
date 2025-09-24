@@ -65,7 +65,7 @@ def view_coverage():
         # 显示各文件覆盖率
         print("📁 各文件覆盖率:")
         print("-" * 30)
-        for file_id, metrics in status["files"].items():
+        for _file_id, metrics in status["files"].items():
             file_info = metrics["index"]
             statements = file_info["nums"]["n_statements"]
             missing = file_info["nums"]["n_missing"]

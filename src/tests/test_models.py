@@ -68,7 +68,6 @@ class TestConversation:
     def test_history_limit(self):
         """Test conversation history limit"""
         conversation = Conversation()
-        original_updated_at = conversation.updated_at
 
         # Add more than max_history_length messages
         for i in range(15):

@@ -298,7 +298,7 @@ class ChatBotLoadTester:
                 await asyncio.sleep(1)  # Small delay between requests
 
         # Ramp up workers
-        for i in range(max_concurrency):
+        for _i in range(max_concurrency):
             task = asyncio.create_task(worker())
             active_tasks.add(task)
 

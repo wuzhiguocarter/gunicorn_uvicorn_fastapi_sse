@@ -151,7 +151,7 @@ class TestConversationManager:
         """Test cleanup of inactive conversations"""
         # Create multiple conversations
         conversations = []
-        for i in range(3):
+        for _i in range(3):
             conv = await manager.create_conversation()
             conversations.append(conv)
 

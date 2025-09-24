@@ -6,7 +6,6 @@ import logging
 import os
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime
 from uuid import UUID
 
 from fastapi import FastAPI, Form, HTTPException, Query, Request
@@ -321,10 +320,10 @@ async def chat_endpoint(
         if conversation_id:
             try:
                 conv_id = UUID(conversation_id)
-            except ValueError:
+            except ValueError as e:
                 raise HTTPException(
                     status_code=400, detail="Invalid conversation_id format"
-                )
+                ) from e
 
         chat_request = ChatRequest(
             message=message,
@@ -340,7 +339,7 @@ async def chat_endpoint(
         raise
     except Exception as e:
         logger.error("chat_endpoint_error", error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -370,7 +369,7 @@ async def get_metrics():
         Performance metrics including request counts, error rates, and system stats
     """
     conversation_metrics = await conversation_manager.get_metrics()
-    uptime = time.time() - startup_time
+    time.time() - startup_time
     error_rate = error_count / request_count if request_count > 0 else 0
 
     return MetricsResponse(
@@ -404,7 +403,7 @@ async def get_conversation_history(
         logger.error(
             "conversation_history_error", error=str(e), conversation_id=conversation_id
         )
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 if __name__ == "__main__":

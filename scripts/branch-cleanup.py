@@ -124,7 +124,7 @@ class BranchCleaner:
                             >= self.rules["merged_branches"]["age_days"]
                         ):
                             merged_branches.append(branch_info)
-                except:
+                except Exception:
                     # 如果无法检查合并状态，跳过
                     continue
 

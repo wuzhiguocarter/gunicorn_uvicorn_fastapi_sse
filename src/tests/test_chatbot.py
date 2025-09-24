@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from fastapi import HTTPException
 
 from src.app.chatbot import ChatBot
 from src.app.models import ChatRequest, Message
@@ -219,5 +220,5 @@ class TestChatBot:
                 side_effect=Exception("Test error")
             )
 
-            with pytest.raises(Exception):
+            with pytest.raises(HTTPException):
                 await chatbot.get_conversation_history(conv_id)

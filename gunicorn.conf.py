@@ -1,3 +1,5 @@
+import tempfile
+
 from container_inspect import get_cgroup_cpu_count
 
 # Worker connections
@@ -9,8 +11,6 @@ keepalive = 2
 workers = get_cgroup_cpu_count()
 worker_class = "uvicorn.workers.UvicornWorker"
 # Use platform-appropriate temporary directory
-import tempfile
-
 worker_tmp_dir = tempfile.gettempdir()
 
 # Logging
