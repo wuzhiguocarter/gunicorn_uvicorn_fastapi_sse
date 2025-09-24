@@ -1,0 +1,12 @@
+{
+  "name": "gunicorn-uvicorn-fastapi-sse",
+  "version": "0.1.0",
+  "description": "High-performance ChatBot SSE Server",
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1"
+  },
+  "scripts": {
+    "commitlint": "commitlint"
+  }
+}

@@ -73,7 +73,16 @@ echo "✅ Pre-commit checks passed"
 echo "📝 Validating commit message..."
 
 # 运行commitlint
-if command -v commitlint &> /dev/null; then
+if [ -f "node_modules/.bin/commitlint" ]; then
+    ./node_modules/.bin/commitlint --edit $1
+    if [ $? -ne 0 ]; then
+        echo "❌ Commit message validation failed"
+        echo "   请遵循以下格式: <type>(<scope>): <subject>"
+        echo "   例如: feat(auth): add user login functionality"
+        echo "   支持的类型: feat, fix, docs, style, refactor, test, chore, perf, ci, build, revert"
+        exit 1
+    fi
+elif command -v commitlint &> /dev/null; then
     commitlint --edit $1
     if [ $? -ne 0 ]; then
         echo "❌ Commit message validation failed"
@@ -82,7 +91,7 @@ if command -v commitlint &> /dev/null; then
         exit 1
     fi
 else
-    echo "⚠️  commitlint not found. Install with: npm install -g @commitlint/cli"
+    echo "⚠️  commitlint not found. 请运行: npm install"
 fi
 
 echo "✅ Commit message validation passed"
@@ -239,6 +248,58 @@ fi
             f.write(template_content)
         print("✅ 创建提交模板")
 
+    def check_dependencies(self) -> dict:
+        """检查依赖状态"""
+        dependencies = {
+            "npm": False,
+            "commitlint_local": False,
+            "commitlint_global": False,
+            "uv": False,
+            "python": False,
+            "pre_commit": False,
+        }
+
+        # 检查 Node.js/npm
+        try:
+            subprocess.run(["npm", "--version"], check=True, capture_output=True)
+            dependencies["npm"] = True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
+
+        # 检查本地 commitlint
+        if Path("node_modules/.bin/commitlint").exists():
+            dependencies["commitlint_local"] = True
+
+        # 检查全局 commitlint
+        try:
+            subprocess.run(["commitlint", "--version"], check=True, capture_output=True)
+            dependencies["commitlint_global"] = True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
+
+        # 检查 uv
+        try:
+            subprocess.run(["uv", "--version"], check=True, capture_output=True)
+            dependencies["uv"] = True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
+
+        # 检查 Python
+        try:
+            subprocess.run(["python", "--version"], check=True, capture_output=True)
+            dependencies["python"] = True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
+
+        # 检查 pre-commit
+        try:
+            subprocess.run(["pre-commit", "--version"], check=True, capture_output=True)
+            dependencies["pre_commit"] = True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
+
+        return dependencies
+
     def install_hooks(self) -> None:
         """安装所有hooks"""
         print("🔧 开始安装 Git Hooks...")
@@ -246,6 +307,15 @@ fi
         if not self.check_git_repo():
             print("❌ 当前目录不是Git仓库")
             sys.exit(1)
+
+        # 检查依赖
+        deps = self.check_dependencies()
+        print("\n📦 依赖检查:")
+        print(f"   • npm: {'✅' if deps['npm'] else '❌'}")
+        print(f"   • commitlint (本地): {'✅' if deps['commitlint_local'] else '❌'}")
+        print(f"   • commitlint (全局): {'✅' if deps['commitlint_global'] else '❌'}")
+        print(f"   • uv: {'✅' if deps['uv'] else '❌'}")
+        print(f"   • pre-commit: {'✅' if deps['pre_commit'] else '❌'}")
 
         # 创建hooks目录
         self.hooks_dir.mkdir(exist_ok=True)
@@ -260,7 +330,8 @@ fi
         self.install_prepare_commit_msg_hook()
 
         # 设置pre-commit
-        self.setup_pre_commit()
+        if deps["pre_commit"]:
+            self.setup_pre_commit()
 
         # 创建Git配置
         self.create_git_config()
@@ -268,16 +339,29 @@ fi
         # 创建提交模板
         self.create_commit_template()
 
+        # 给出建议
+        print("\n💡 建议:")
+        if not deps["commitlint_local"] and deps["npm"]:
+            print("   • 建议运行: npm install (安装 commitlint)")
+        if not deps["pre_commit"]:
+            print("   • 建议运行: pip install pre-commit")
+        if not deps["uv"]:
+            print("   • 建议安装 uv: curl -LsSf https://astral.sh/uv/install.sh | sh")
+
         print("\n🎉 Git Hooks 安装完成!")
         print("\n📋 已安装的hooks:")
-        print("   • pre-commit: 提交前检查代码质量")
-        print("   • commit-msg: 验证提交消息格式")
+        print("   • pre-commit: 提交前检查代码质量 (ruff + mypy + pytest)")
+        print("   • commit-msg: 验证提交消息格式 (commitlint)")
         print("   • pre-push: 推送前验证分支名称和运行测试")
         print("   • prepare-commit-msg: 准备提交消息模板")
         print("\n🔧 相关配置:")
         print("   • 创建了提交模板 (.gitmessage)")
         print("   • 设置了Git配置选项")
         print("   • 配置了pre-commit工具")
+        print("\n📦 依赖要求:")
+        print("   • Node.js依赖: npm install (commitlint)")
+        print("   • Python依赖: uv pip install -e '.[dev]'")
+        print("   • Git hooks: 已安装到 .git/hooks/")
 
     def uninstall_hooks(self) -> None:
         """卸载hooks"""
