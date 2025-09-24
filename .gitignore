@@ -150,3 +150,5 @@ htmlcov/
 multi_turn_test.json
 load_test_results.json
 ramp_up_test_results.json
+
+reports/

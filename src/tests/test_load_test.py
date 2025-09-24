@@ -147,12 +147,13 @@ class TestChatBotLoadTester:
                 mock_response = AsyncMock()
                 mock_response.status = 200
 
-                # Mock SSE stream
+                # Mock SSE stream - using actual server format
                 mock_content = AsyncMock()
                 mock_content.__aiter__.return_value = [
-                    b'data: {"type": "connected", "conversation_id": "test"}\n',
-                    b'data: {"type": "partial_response", "content": "Hello"}\n',
-                    b'data: {"type": "complete", "content": "Hello"}\n',
+                    b"data: event='connected' data='{\"type\": \"connected\", \"conversation_id\": \"test\"}'\n",
+                    b"data: event='message' data='{\"type\": \"partial_response\", \"content\": \"Hello\"}'\n",
+                    b"data: event='message' data='{\"type\": \"partial_response\", \"content\": \"Hello\"}'\n",
+                    b"data: event='completed' data='{\"type\": \"completed\", \"content\": \"Hello\"}'\n",
                 ]
                 mock_response.content = mock_content
                 mock_post.return_value.__aenter__.return_value = mock_response
@@ -161,7 +162,7 @@ class TestChatBotLoadTester:
 
                 assert result["success"] is True
                 assert result["response_time"] > 0
-                assert result["event_count"] == 3
+                assert result["event_count"] == 4
                 assert result["message_length"] > 0
 
     @pytest.mark.asyncio

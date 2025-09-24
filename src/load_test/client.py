@@ -127,23 +127,57 @@ class ChatBotLoadTester:
                 full_response = ""
                 event_count = 0
                 last_message = ""
+                received_complete_event = False
 
                 async for line in response.content:
                     if line:
                         line_str = line.decode('utf-8').strip()
                         if line_str.startswith('data: '):
                             try:
-                                data = json.loads(line_str[6:])
-                                event_count += 1
-                                if data.get('type') == 'complete':
-                                    last_message = data.get('content', '')
-                                full_response += data.get('content', '')
-                            except json.JSONDecodeError:
+                                # 解析 data: event='message' data='{"type": "complete", ...}' 格式
+                                data_part = line_str[6:]  # 去掉 "data: "
+
+                                # 查找 JSON 部分
+                                json_start = data_part.find('data=\'')
+                                if json_start != -1:
+                                    json_start += 6  # 跳过 'data=\''
+                                    json_end = data_part.find('\'', json_start)
+                                    if json_end != -1:
+                                        json_str = data_part[json_start:json_end]
+                                        data = json.loads(json_str)
+                                        event_count += 1
+
+                                        if data.get('type') == 'complete':
+                                            last_message = data.get('content', '')
+                                            received_complete_event = True
+                                        elif data.get('type') == 'completed':
+                                            # 处理最终的 completed 事件
+                                            last_message = data.get('content', '')
+                                            received_complete_event = True
+
+                                        full_response += data.get('content', '')
+                            except (json.JSONDecodeError, ValueError) as e:
+                                # 解析失败时跳过这行
                                 pass
 
                 response_time = time.time() - start_time
-                self.metrics.add_response_time(response_time)
-                self.metrics.successful_requests += 1
+
+                # 检查是否收到了完整的响应（必须包含complete事件）
+                if event_count == 0 or not last_message:
+                    # 没有收到SSE事件或没有收到complete事件，标记为失败
+                    error_msg = f"Incomplete SSE response: {event_count} events, no complete event"
+                    self.metrics.add_error(Exception(error_msg), {"message": message, "conversation_id": conversation_id})
+                    return {
+                        "success": False,
+                        "response_time": response_time,
+                        "error": error_msg,
+                        "conversation_id": conversation_id,
+                        "event_count": event_count,
+                    }
+                else:
+                    # 收到完整响应，标记为成功
+                    self.metrics.add_response_time(response_time)
+                    self.metrics.successful_requests += 1
 
                 return {
                     "success": True,
@@ -152,6 +186,7 @@ class ChatBotLoadTester:
                     "conversation_id": conversation_id,
                     "message_length": len(full_response),
                     "last_message": last_message,
+                    "received_complete_event": received_complete_event,
                 }
 
         except Exception as e:

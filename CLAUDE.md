@@ -4,41 +4,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a high-performance ChatBot server built with FastAPI, supporting Server-Sent Events (SSE) for real-time streaming responses. The server supports multi-turn conversations and is optimized for production deployment with gunicorn and uvicorn.
+This is a high-performance ChatBot server built with FastAPI, supporting Server-Sent Events (SSE) for real-time streaming responses. The server supports multi-turn conversations and is optimized for production deployment with gunicorn and uvicorn. The project includes comprehensive load testing capabilities with progressive ramp-up testing and detailed performance reporting.
 
 ## Key Commands
 
-### Development Environment Setup
+### Environment Setup
 ```bash
-# Create virtual environment with uv and install dependencies
+# Create virtual environment and install dependencies
 uv venv --python 3.12
 uv pip install -e ".[dev]"
 
-# Alternative using make
+# Setup development environment
 make setup-dev
 ```
 
 ### Running the Server
 ```bash
 # Development mode with auto-reload
-uv run uvicorn src.app.main:app --host 0.0.0.0 --port 8000 --reload
+make run-dev
 
 # Production mode with gunicorn
-uv run ./start.sh
-
-# Or using make commands
-make run-dev
 make run-gunicorn
+
+# Demo mode with web interface
+make demo
 ```
 
 ### Testing
 ```bash
 # Run all tests
-uv run pytest src/tests/ -v
 make test
 
 # Run tests with coverage
-uv run pytest src/tests/ --cov=src/app --cov-report=html --cov-report=term-missing
 make test-coverage
 
 # Run specific test file
@@ -57,22 +54,22 @@ make check-all
 make lint        # ruff linting
 make format      # black + isort formatting
 make type-check  # mypy type checking
-
-# Run pre-commit hooks
-make pre-commit
+make pre-commit  # pre-commit hooks
 ```
 
 ### Load Testing
 ```bash
 # Simple load test
-uv run python src/load_test/scripts/run_load_test.py --simple
 make load-test
 
-# Full load test with custom parameters
-uv run python src/load_test/scripts/run_load_test.py --requests 100 --concurrency 10 --multi-turn
+# Full load test
+make load-test-full
 
 # Ramp-up load test
-uv run python src/load_test/scripts/run_load_test.py --ramp-up 30 --duration 60 --concurrency 20
+make load-test-ramp
+
+# Progressive ramp-up test with visual progress
+uv run python ramp_up_test.py
 ```
 
 ## Architecture Overview
@@ -136,10 +133,24 @@ The application uses environment variables and `pydantic-settings` for configura
 - Support for concurrent and ramp-up testing scenarios
 - Multi-turn conversation testing support
 
+### Progressive Ramp-up Testing (`ramp_up_test.py`)
+- **Visual Progress Tracking**: Real-time progress bars with system resource monitoring
+- **9 Test Phases**: From 10 to 200 concurrent users with automatic escalation
+- **Comprehensive Reporting**: JSON results and Markdown reports with performance analysis
+- **System Monitoring**: Real-time CPU and memory usage tracking during tests
+- **Interactive UI**: Health check progress, phase transitions, and countdown timers
+
 ### Test Scenarios
 - **Concurrent Testing**: Fixed number of concurrent requests
 - **Ramp-up Testing**: Gradual increase in concurrent users
 - **Multi-turn Testing**: Maintains conversation context across requests
+- **Progressive Load Testing**: Step-by-step concurrency increase with performance analysis
+
+### Report Generation
+- **Timestamped Directories**: All test results saved to `reports/YYmmddTHHMM/` format
+- **Dual Output**: Both JSON data files and Markdown human-readable reports
+- **Performance Analysis**: Automatic detection of performance bottlenecks and trends
+- **System Metrics**: CPU, memory, and response time analysis across all test phases
 
 ## Testing Strategy
 
@@ -169,6 +180,12 @@ The application uses environment variables and `pydantic-settings` for configura
 3. Add tests in `src/tests/`
 4. Update load testing scenarios if needed
 5. Run all quality checks before committing
+
+### Load Testing Development
+- **New Test Scenarios**: Add new test patterns to `src/load_test/client.py`
+- **Progressive Testing**: Extend `ramp_up_test.py` with additional test phases or metrics
+- **Report Generation**: Enhance reporting functionality in the progressive testing framework
+- **Performance Analysis**: Add new performance metrics or analysis methods
 
 ### Performance Considerations
 - Keep conversation history limited (configurable)
@@ -237,8 +254,10 @@ gunicorn_uvicorn_fastapi_sse/
 │       ├── test_chatbot.py
 │       ├── test_conversation_manager.py
 │       └── test_load_test.py
+├── reports/                     # Load test reports and results
 ├── gunicorn.conf.py             # Gunicorn configuration
 ├── start.sh                     # Production startup script
+├── ramp_up_test.py              # Progressive load testing with UI
 ├── Makefile                     # Common commands
 ├── pyproject.toml               # Project configuration
 └── .pre-commit-config.yaml      # Pre-commit hooks
@@ -253,3 +272,9 @@ gunicorn_uvicorn_fastapi_sse/
 - `RESPONSE_DELAY`: Simulated response delay in seconds (default: 0.5)
 - `LOG_LEVEL`: Logging level (default: INFO)
 - `WORKERS`: Number of gunicorn workers (default: CPU cores * 2 + 1)
+- `SSE_KEEPALIVE_TIMEOUT`: SSE keepalive timeout in seconds (default: 30)
+- `SSE_RECONNECT_DELAY`: SSE reconnect delay in milliseconds (default: 1000)
+- `MAX_CONCURRENT_CONNECTIONS`: Maximum concurrent connections (default: 1000)
+- `REQUEST_TIMEOUT`: Request timeout in seconds (default: 30)
+- `API_KEY`: Optional API key for authentication
+- `CORS_ORIGINS`: CORS allowed origins (default: ["*"])

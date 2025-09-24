@@ -23,8 +23,6 @@ dev = [
     "pytest>=7.4.3",
     "pytest-asyncio>=0.21.1",
     "pytest-cov>=4.1.0",
-    "black>=23.11.0",
-    "isort>=5.12.0",
     "ruff>=0.1.8",
     "mypy>=1.8.0",
     "pre-commit>=3.6.0",
@@ -48,36 +46,12 @@ python_functions = ["test_*"]
 addopts = "--cov=src/app --cov-report=html --cov-report=term-missing"
 asyncio_mode = "auto"
 
-[tool.black]
-line-length = 88
-target-version = ["py312"]
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | build
-  | dist
-)/
-'''
-
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 88
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
 
 [tool.ruff]
 target-version = "py312"
 line-length = 88
+
+[tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings
@@ -88,13 +62,23 @@ select = [
     "UP", # pyupgrade
 ]
 ignore = [
-    "E501",  # line too long, handled by black
+    "E501",  # line too long, handled by formatter
     "B008",  # do not perform function calls in argument defaults
     "C901",  # too complex
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+
+[tool.ruff.format]
+# Use double quotes
+quote-style = "double"
+# Use 4 spaces for indentation
+indent-style = "space"
+# Keep trailing comma behavior consistent with black
+skip-magic-trailing-comma = false
+# Use Unix line endings
+line-ending = "auto"
 
 [tool.mypy]
 python_version = "3.12"
