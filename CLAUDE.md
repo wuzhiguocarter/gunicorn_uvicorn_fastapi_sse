@@ -69,7 +69,7 @@ make load-test-full
 make load-test-ramp
 
 # Progressive ramp-up test with visual progress
-uv run python ramp_up_test.py
+uv run python src/load_test/ramp_up_test.py
 ```
 
 ## Architecture Overview
@@ -183,7 +183,7 @@ The application uses environment variables and `pydantic-settings` for configura
 
 ### Load Testing Development
 - **New Test Scenarios**: Add new test patterns to `src/load_test/client.py`
-- **Progressive Testing**: Extend `ramp_up_test.py` with additional test phases or metrics
+- **Progressive Testing**: Extend `src/load_test/ramp_up_test.py` with additional test phases or metrics
 - **Report Generation**: Enhance reporting functionality in the progressive testing framework
 - **Performance Analysis**: Add new performance metrics or analysis methods
 
@@ -257,7 +257,7 @@ gunicorn_uvicorn_fastapi_sse/
 ├── reports/                     # Load test reports and results
 ├── gunicorn.conf.py             # Gunicorn configuration
 ├── start.sh                     # Production startup script
-├── ramp_up_test.py              # Progressive load testing with UI
+├── src/load_test/ramp_up_test.py              # Progressive load testing with UI
 ├── Makefile                     # Common commands
 ├── pyproject.toml               # Project configuration
 └── .pre-commit-config.yaml      # Pre-commit hooks

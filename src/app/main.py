@@ -2,8 +2,11 @@
 FastAPI application with SSE ChatBot
 """
 
+import logging
+import os
 import time
 from contextlib import asynccontextmanager
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import FastAPI, Form, HTTPException, Query, Request
@@ -19,6 +22,27 @@ from .models import ChatRequest, HealthResponse, MetricsResponse
 
 setup_logging()
 logger = get_logger(__name__)
+
+# Setup access logging
+access_logger = logging.getLogger("access")
+access_logger.setLevel(logging.INFO)
+
+# Create logs directory if it doesn't exist
+logs_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "logs")
+os.makedirs(logs_dir, exist_ok=True)
+
+# Create access log handler
+access_log_file = os.path.join(logs_dir, "access.log")
+access_handler = logging.FileHandler(access_log_file)
+access_handler.setLevel(logging.INFO)
+
+# Create access log formatter
+access_formatter = logging.Formatter(
+    '%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+access_handler.setFormatter(access_formatter)
+access_logger.addHandler(access_handler)
 
 
 @asynccontextmanager
@@ -49,6 +73,38 @@ app.add_middleware(
 startup_time = time.time()
 request_count = 0
 error_count = 0
+
+
+@app.middleware("http")
+async def access_log_middleware(request: Request, call_next):
+    """Middleware to log API access requests"""
+    start_time = time.time()
+    client_ip = request.client.host if request.client else "unknown"
+    method = request.method
+    path = request.url.path
+    query_string = str(request.query_params) if request.query_params else ""
+    user_agent = request.headers.get("user-agent", "unknown")
+
+    try:
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        status_code = response.status_code
+
+        # Log successful requests
+        access_logger.info(
+            f"{client_ip} - \"{method} {path}{f'?{query_string}' if query_string else ''}\" "
+            f"{status_code} {process_time:.3f}s - \"{user_agent}\""
+        )
+
+        return response
+    except Exception as e:
+        process_time = time.time() - start_time
+        # Log failed requests
+        access_logger.error(
+            f"{client_ip} - \"{method} {path}{f'?{query_string}' if query_string else ''}\" "
+            f"ERROR {process_time:.3f}s - \"{user_agent}\" - {str(e)}"
+        )
+        raise e
 
 
 @app.middleware("http")

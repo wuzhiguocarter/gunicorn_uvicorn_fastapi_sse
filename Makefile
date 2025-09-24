@@ -79,10 +79,10 @@ load-test-ramp:  ## Run ramp-up load test
 	uv run python src/load_test/scripts/run_load_test.py --ramp-up 30 --duration 60 --concurrency 20
 
 ramp-up:  ## Run comprehensive ramp-up test (non-interactive)
-	uv run python ramp_up_test.py --no-prompt
+	uv run python src/load_test/ramp_up_test.py --no-prompt
 
 ramp-up-interactive:  ## Run ramp-up test with interactive prompts
-	uv run python ramp_up_test.py
+	uv run python src/load_test/ramp_up_test.py
 
 test-client:  ## Test load client metrics accuracy
 	uv run python test_client_metrics.py
