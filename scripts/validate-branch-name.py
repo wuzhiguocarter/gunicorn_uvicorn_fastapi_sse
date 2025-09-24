@@ -7,7 +7,6 @@ Git分支名称验证脚本
 import re
 import subprocess
 import sys
-from typing import Optional
 
 
 class BranchValidator:
@@ -32,7 +31,7 @@ class BranchValidator:
             "experiment": "实验分支格式: experiment/技术方案-开发者 (如: experiment/new-cache-john)",
         }
 
-    def validate_branch_name(self, branch_name: str) -> tuple[bool, Optional[str]]:
+    def validate_branch_name(self, branch_name: str) -> tuple[bool, str | None]:
         """验证分支名称"""
         # 移除远程分支前缀
         if branch_name.startswith("origin/"):
@@ -43,7 +42,7 @@ class BranchValidator:
             return True, None
 
         # 检查每个模式
-        for branch_type, pattern in self.patterns.items():
+        for _branch_type, pattern in self.patterns.items():
             if re.match(pattern, branch_name):
                 return True, None
 

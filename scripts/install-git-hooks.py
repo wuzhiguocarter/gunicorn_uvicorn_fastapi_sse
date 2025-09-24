@@ -45,15 +45,63 @@ class GitHookInstaller:
 # Pre-commit hook
 echo "🔍 Running pre-commit checks..."
 
-# 运行pre-commit
+# 优先使用pre-commit工具（如果安装了）
 if command -v pre-commit &> /dev/null; then
+    echo "🔧 Using pre-commit tool..."
     pre-commit run --all-files
     if [ $? -ne 0 ]; then
         echo "❌ Pre-commit checks failed"
         exit 1
     fi
 else
-    echo "⚠️  pre-commit not found. Install with: pip install pre-commit"
+    echo "📝 Running manual code quality checks..."
+
+    # 运行ruff格式化检查
+    if command -v ruff &> /dev/null; then
+        ruff check --diff .
+        if [ $? -ne 0 ]; then
+            echo "❌ Ruff formatting issues found"
+            echo "   Run 'ruff check --fix .' to fix formatting issues"
+            exit 1
+        fi
+    else
+        echo "⚠️  ruff not found, skipping..."
+    fi
+
+    # 运行ruff linting
+    if command -v ruff &> /dev/null; then
+        ruff check .
+        if [ $? -ne 0 ]; then
+            echo "❌ Ruff linting failed"
+            exit 1
+        fi
+    else
+        echo "⚠️  ruff not found, skipping..."
+    fi
+
+    # 运行mypy类型检查
+    if command -v mypy &> /dev/null; then
+        mypy src/app/
+        if [ $? -ne 0 ]; then
+            echo "❌ MyPy type checking failed"
+            exit 1
+        fi
+    else
+        echo "⚠️  mypy not found, skipping..."
+    fi
+fi
+
+# 运行测试
+echo "🧪 Running tests..."
+if command -v uv &> /dev/null; then
+    uv run pytest src/tests/ -v
+else
+    python -m pytest src/tests/ -v
+fi
+
+if [ $? -ne 0 ]; then
+    echo "❌ Tests failed"
+    exit 1
 fi
 
 echo "✅ Pre-commit checks passed"
@@ -117,17 +165,19 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# 运行测试
-echo "🧪 Running tests..."
-if command -v uv &> /dev/null; then
-    uv run pytest src/tests/ -v
-else
-    python -m pytest src/tests/ -v
+# 运行快速检查
+echo "⚡ Running fast checks..."
+
+# 检查是否有未提交的更改
+if [ -n "$(git status --porcelain)" ]; then
+    echo "⚠️  Warning: You have uncommitted changes"
+    echo "   Consider committing them before pushing"
 fi
 
-if [ $? -ne 0 ]; then
-    echo "❌ Tests failed"
-    exit 1
+# 检查是否在正确的分支上
+CURRENT_BRANCH=$(git branch --show-current)
+if [ "$CURRENT_BRANCH" = "main" ]; then
+    echo "🔒 Pushing to main branch - ensure this is intentional"
 fi
 
 echo "✅ Pre-push checks passed"
@@ -350,9 +400,9 @@ fi
 
         print("\n🎉 Git Hooks 安装完成!")
         print("\n📋 已安装的hooks:")
-        print("   • pre-commit: 提交前检查代码质量 (ruff + mypy + pytest)")
+        print("   • pre-commit: 提交前检查代码质量 (pre-commit工具 或 ruff + mypy + pytest)")
         print("   • commit-msg: 验证提交消息格式 (commitlint)")
-        print("   • pre-push: 推送前验证分支名称和运行测试")
+        print("   • pre-push: 推送前验证分支名称和快速检查")
         print("   • prepare-commit-msg: 准备提交消息模板")
         print("\n🔧 相关配置:")
         print("   • 创建了提交模板 (.gitmessage)")
