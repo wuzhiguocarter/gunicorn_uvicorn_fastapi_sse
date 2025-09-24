@@ -5,10 +5,10 @@ help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 install:  ## Install package dependencies
-	uv run pip install -e .
+	uv pip install -e .
 
 dev-install:  ## Install development dependencies
-	uv run pip install -e ".[dev]"
+	uv pip install -e ".[dev]"
 
 test:  ## Run tests
 	uv run pytest
@@ -88,12 +88,15 @@ test-client:  ## Test load client metrics accuracy
 	uv run python test_client_metrics.py
 
 setup-dev:  ## Set up development environment
-	uv run pip install --upgrade pip
-	uv run pip install -e ".[dev]"
-	pre-commit install
+	@if [ ! -d ".venv" ]; then \
+		uv venv --python 3.12; \
+	fi
+	uv pip install -e ".[dev]"
+	@git config --unset-all core.hooksPath 2>/dev/null || true
+	uv run pre-commit install -f
 
 pre-commit:  ## Run pre-commit hooks
-	pre-commit run --all-files
+	uv run pre-commit run --all-files
 
 demo:  ## Run demo with sample data
 	@echo "Starting ChatBot SSE Server demo..."
